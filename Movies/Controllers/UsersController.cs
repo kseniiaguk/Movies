@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -13,36 +14,19 @@ namespace Movies.Controllers
     public class UsersController : Controller
     {
         private readonly DatabaseContext _context;
-
         public UsersController(DatabaseContext context)
         {
             _context = context;
         }
-
-        // GET: UserModels
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> PersonalAccount()
         {
-            return View(await _context.Users.ToListAsync());
-        }
-
-        // GET: UserModels/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
+            int? currentId = HttpContext.Session.GetInt32("user");
+            if (currentId == null) // TODO: make _currentUser not null after redirection
             {
-                return NotFound();
+                return RedirectToAction("Index", "Home");
             }
-
-            var userModel = await _context.Users
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (userModel == null)
-            {
-                return NotFound();
-            }
-
-            return View(userModel);
+            return View((await _context.Users.FindAsync(currentId))?.SpecifiedMovies ?? Enumerable.Empty<SpecifiedMovieModel>());
         }
-
         // GET: UserModels/Create
         [HttpGet]
         public IActionResult Register()
@@ -59,107 +43,72 @@ namespace Movies.Controllers
         {
             if (ModelState.IsValid)
             {
-                if (! await _context.Users.AnyAsync(user => user.Email == userModel.Email || user.Name == userModel.Name)) 
+                IEnumerable<UserModel> matchedUsers = _context.Users.Where(user => user.Email == userModel.Email || user.Name == userModel.Name);
+                if (! matchedUsers.Any()) 
                 {
-                    _context.Add(userModel.CreateUserModel());
+                    UserModel tempUser = userModel.CreateUserModel();
+                    _context.Add(tempUser);
                     await _context.SaveChangesAsync();
-                    return RedirectToAction(nameof(Index), "Home");// TODO : redirect to personal account
+                    HttpContext.Session.SetInt32("user", tempUser.Id);
+                    //await HttpContext.Session.CommitAsync();
+                    return RedirectToAction(nameof(PersonalAccount));// TODO : redirect to personal account
                 }
                 else
                 {
-                    ModelState.AddModelError("", "There's some error");
+                    if (matchedUsers.Any(user => user.Email == userModel.Email))
+                    {
+                        ModelState.AddModelError("Email", "Пользователь с таким электронным адресом уже существует");
+                    }
+                    if (matchedUsers.Any(user => user.Name == userModel.Name))
+                    {
+                        ModelState.AddModelError("Name", "Пользователь с таким именем уже существует");
+                    }
                 }
             }
             else
             {
-                ModelState.AddModelError("", "There's some error. Again!");
+                ModelState.AddModelError("", "Error");
             }
             return View(userModel);
         }
 
-        // GET: UserModels/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        [HttpGet]
+
+        public IActionResult Login() 
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var userModel = await _context.Users.FindAsync(id);
-            if (userModel == null)
-            {
-                return NotFound();
-            }
-            return View(userModel);
+            return View();
         }
 
-        // POST: UserModels/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Email,Password,Name")] UserModel userModel)
-        {
-            if (id != userModel.Id)
-            {
-                return NotFound();
-            }
 
-            if (ModelState.IsValid)
+        public IActionResult Login(string email, string password)
+        {
+            IEnumerable<UserModel> possibleUser = _context.Users.Where(user => user.Email == email);
+            if (possibleUser.Any())
             {
-                try
+                UserModel currentUser = possibleUser.FirstOrDefault(user => user.Password == password);
+                if (currentUser != null)
                 {
-                    _context.Update(userModel);
-                    await _context.SaveChangesAsync();
+                    HttpContext.Session.SetInt32("user", currentUser.Id);
+                    return RedirectToAction(nameof(PersonalAccount));
                 }
-                catch (DbUpdateConcurrencyException)
+                else
                 {
-                    if (!UserModelExists(userModel.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    ModelState.AddModelError("Password", "Пароль введён неправильно");
                 }
-                return RedirectToAction(nameof(Index));
             }
-            return View(userModel);
-        }
-
-        // GET: UserModels/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
+            else
             {
-                return NotFound();
+                ModelState.AddModelError("Email", "Нет пользователя с таким электронным адресом");
             }
-
-            var userModel = await _context.Users
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (userModel == null)
-            {
-                return NotFound();
-            }
-
-            return View(userModel);
+            return View(new LoginViewModel { Email = email });
         }
 
-        // POST: UserModels/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public IActionResult Logout()
         {
-            var userModel = await _context.Users.FindAsync(id);
-            _context.Users.Remove(userModel);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool UserModelExists(int id)
-        {
-            return _context.Users.Any(e => e.Id == id);
+            HttpContext.Session.Clear();
+            return RedirectToAction("Index","Home");
         }
     }
 }

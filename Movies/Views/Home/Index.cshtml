@@ -3,7 +3,16 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <a href="~/Users/Register">Регистрация</a>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Добро пожаловать!</h1>
+    @if (Context.Session.Keys.Contains("user"))
+    {
+        <a href="~/Users/PersonalAccount">Личный кабинет</a>
+        <a href="~/Users/Logout">Выйти</a>
+    }
+    else
+    {
+        <a href="~/Users/Register">Регистрация</a>
+        <a href="~/Users/Login">Вход</a>
+    }
 </div>
+

@@ -15,6 +15,6 @@ namespace Movies.Models
         [DataType(DataType.Password)]
         public string Password { get; set; }
         public string Name { get; set; }
-        public IEnumerable<SpecifiedMovieModel> CommonMovie { get; set; }
+        public IEnumerable<SpecifiedMovieModel> SpecifiedMovies { get; set; }
     }
 }
