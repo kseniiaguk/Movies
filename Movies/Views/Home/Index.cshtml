@@ -4,6 +4,27 @@
 
 <div class="text-center">
     <h1 class="display-4">Добро пожаловать!</h1>
+    <form>
+        <input type="search" name="line"/>
+        <button formaction="~/Home/Search">Найти</button>
+    </form>
+    @if (Context.Items.ContainsKey("movies"))
+    {
+        IEnumerable<CommonMovieModel> movies = Context.Items["movies"] as IEnumerable<CommonMovieModel>;
+        if (movies.Any())
+        {
+            foreach(CommonMovieModel movie in movies)
+            {
+                <h3><a>@movie.Title</a></h3>
+                <img src="@movie.Image" />
+                <p>Теги: @movie.Categories</p> // TODO: links in tags
+            }
+        }
+        else
+        {
+            <h3>Совпадений не найдено.</h3>
+        }
+    }
     @if (Context.Session.Keys.Contains("user"))
     {
         <a href="~/Users/PersonalAccount">Личный кабинет</a>

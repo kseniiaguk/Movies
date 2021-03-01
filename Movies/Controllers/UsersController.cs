@@ -25,7 +25,13 @@ namespace Movies.Controllers
             {
                 return RedirectToAction("Index", "Home");
             }
-            return View((await _context.Users.FindAsync(currentId))?.SpecifiedMovies ?? Enumerable.Empty<SpecifiedMovieModel>());
+            UserModel user = await _context.Users.Include(tempUser => tempUser.SpecifiedMovies).Where(item => item.Id == currentId).FirstOrDefaultAsync();
+            //UserModel user = await _context.Users.FindAsync(currentId);
+            IEnumerable<SpecifiedMovieModel> specifiedMovies = user?.SpecifiedMovies ?? Enumerable.Empty<SpecifiedMovieModel>();
+            return View("PersonalAccount", specifiedMovies.Select(item => {
+                                                                            _context.Entry(item).Reference("CommonMovie").Load();
+                                                                            return (item.CommonMovie, item);
+            }));
         }
         // GET: UserModels/Create
         [HttpGet]
@@ -44,7 +50,7 @@ namespace Movies.Controllers
             if (ModelState.IsValid)
             {
                 IEnumerable<UserModel> matchedUsers = _context.Users.Where(user => user.Email == userModel.Email || user.Name == userModel.Name);
-                if (! matchedUsers.Any()) 
+                if (!matchedUsers.Any())
                 {
                     UserModel tempUser = userModel.CreateUserModel();
                     _context.Add(tempUser);
@@ -74,7 +80,7 @@ namespace Movies.Controllers
 
         [HttpGet]
 
-        public IActionResult Login() 
+        public IActionResult Login()
         {
             return View();
         }
@@ -108,7 +114,39 @@ namespace Movies.Controllers
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
-            return RedirectToAction("Index","Home");
+            return RedirectToAction("Index", "Home");
+        }
+        public IActionResult ClickingAddButton()
+        {
+            HttpContext.Items.Add("pressed", true);
+            return View("AddingMovie");
+        }
+        public async Task<IActionResult> AddingMovie(AddedMovieViewModel movieInfo)
+        {
+            int? id = HttpContext.Session.GetInt32("user");
+            if (id != null)
+            {
+                if (ModelState.IsValid)
+                {
+                    UserModel user = await _context.Users.FindAsync(id);
+                    (CommonMovieModel commonMovie, SpecifiedMovieModel specifiedMovie) = movieInfo.CreateMovie(user);
+                    _context.CommonMovies.Add(commonMovie);
+                    _context.SpecifiedMovies.Add(specifiedMovie);
+                    await _context.SaveChangesAsync();
+                    return Json(new { IsValid = true, Redirect = true, Url = Url.Action("PersonalAccount") });
+                }
+                else
+                {
+                    ModelState.AddModelError("", "Проверьте, что все поля заполнены");
+                }
+            }
+            else
+            {
+                return RedirectToAction("Login"); //TODO: saving changes while user is redirecting to Login
+            }
+            return Json(new { IsValid = false,
+                              Redirect = false,
+                              Html = Helper.RenderRazorViewToString(this, "AddingMovie", movieInfo) });
         }
     }
 }

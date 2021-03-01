@@ -1,4 +1,4 @@
-﻿@model IEnumerable<Movies.Models.SpecifiedMovieModel>
+﻿@model IEnumerable<(CommonMovieModel commonMovie, SpecifiedMovieModel specifiedMovie)>
 
 @{
     ViewData["Title"] = "Личный кабинет";
@@ -8,16 +8,28 @@
 
 <h2>Что я хочу посмотреть позже:</h2>
 <p>
-    <a asp-action="Create">Добавить фильм</a>
+    <a onclick="showInPopup('@Url.Action("ClickingAddButton")','Добавление фильма')">Добавить фильм</a>
 </p>
 <table class="table">
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.Link)
+                @Html.DisplayNameFor(model => model.commonMovie.Image)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Comment)
+                @Html.DisplayNameFor(model => model.commonMovie.Title)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.commonMovie.Description)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.commonMovie.Categories)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.specifiedMovie.Link)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.specifiedMovie.Comment)
             </th>
             <th></th>
         </tr>
@@ -26,15 +38,26 @@
 @foreach (var item in Model) {
         <tr>
             <td>
-                @Html.DisplayFor(modelItem => item.Link)
+                <img src="@item.commonMovie.Image" />
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Comment)
+                @Html.DisplayFor(modelItem => item.commonMovie.Title)
             </td>
             <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+                @Html.DisplayFor(modelItem => item.commonMovie.Description)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.commonMovie.Categories)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.specifiedMovie.Link)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.specifiedMovie.Comment)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.specifiedMovie.Id">Edit</a> |
+                <a asp-action="Delete" asp-route-id="@item.specifiedMovie.Id">Delete</a>
             </td>
         </tr>
 }
